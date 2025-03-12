@@ -6,6 +6,7 @@ from diffusers.utils import make_image_grid
 from PIL import Image, ImageDraw, ImageFont
 import os
 import numpy as np
+
 from flask import Flask, render_template, request, jsonify, send_from_directory
 import base64
 import io
@@ -607,6 +608,39 @@ def generate_panel_hash(prompt, characters):
     input_str = prompt + "".join(sorted(characters))
     return hashlib.sha256(input_str.encode()).hexdigest()
 
+def add_speech_bubble(image_path, text, position=(50, 50), bubble_size=(250, 100)):
+    """Add a speech bubble to the comic panel."""
+    image = Image.open(image_path)
+    draw = ImageDraw.Draw(image)
+
+    # Define bubble parameters
+    x, y = position
+    w, h = bubble_size
+    bubble_color = "white"
+    outline_color = "black"
+
+    # Draw the speech bubble (rounded rectangle)
+    draw.rounded_rectangle([x, y, x + w, y + h], fill=bubble_color, outline=outline_color, radius=20)
+
+    # Draw speech tail (small triangle)
+    tail_points = [(x + w - 20, y + h), (x + w, y + h + 20), (x + w - 40, y + h)]
+    draw.polygon(tail_points, fill=bubble_color, outline=outline_color)
+
+    # Load font
+    try:
+        font = ImageFont.truetype("arial.ttf", 20)
+    except:
+        font = ImageFont.load_default()
+
+    # Add text
+    draw.text((x + 15, y + 15), text, fill="black", font=font)
+
+    # Save modified image
+    modified_image_path = image_path.replace(".png", "_bubble.png")
+    image.save(modified_image_path)
+    return modified_image_path
+
+comic_generator = ComicGenerator()
 @app.route('/generate_comic', methods=['POST'])
 def generate_comic():
     data = request.json
@@ -634,6 +668,7 @@ def generate_comic():
     # If not stored, generate new panels
     session_id = str(int(time.time()))
     generation_progress[session_id] = 0
+
     
     def generate_in_background():
         try:
@@ -650,12 +685,12 @@ def generate_comic():
         except Exception as e:
             generation_results[session_id] = {'success': False, 'error': str(e)}
             generation_progress[session_id] = -1
-    
-    thread = threading.Thread(target=generate_in_background)
-    thread.daemon = True
-    thread.start()
-    
-    return jsonify({'success': True, 'session_id': session_id, 'message': 'Generation started'})
+
+        thread = threading.Thread(target=generate_in_background)
+        thread.daemon = True
+        thread.start()
+
+        return jsonify({'success': True, 'session_id': session_id, 'message': 'Generation started'})
 
 
 if __name__ == '__main__':
