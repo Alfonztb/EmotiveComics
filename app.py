@@ -101,7 +101,7 @@ class ComicGenerator:
             image = self.pipe(
                 prompt=f"{base_prompt}, {pose}",
                 negative_prompt="deformed, distorted, disfigured, poorly drawn, bad anatomy, wrong anatomy, extra limbs, missing limbs, floating limbs, mutated, multiple faces",
-                num_inference_steps=30,  # More steps for higher quality reference
+                num_inference_steps=40,  # More steps for higher quality reference
                 guidance_scale=8.5,
                 width=512,
                 height=512
